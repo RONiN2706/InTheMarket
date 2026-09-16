@@ -32,39 +32,8 @@ const CONDITIONS = [
   { value:'parts',    label:'For Parts / Not Working' },
 ];
 
-/* =====================================================================
-   BACKEND / STORAGE LAYER
-   -----------------------------------------------------------------------
-   This app is a FRAMEWORK: the two functions below are the seams where
-   your real backend plugs in later. Right now they use Claude's built-in
-   realtime document store as a stand-in database, so the app is fully
-   clickable and listings really persist and sync between viewers.
-
-   To swap in your own backend, replace the body of `saveListingToBackend`
-   with a real request, e.g.:
-
-     async function saveListingToBackend(listing) {
-       const res = await fetch('/api/listings', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify(listing)
-       });
-       if (!res.ok) throw new Error('Failed to save listing');
-       return await res.json();
-     }
-
-   and replace `searchListings` with a real call to your matching API,
-   e.g.:
-
-     async function searchListings(query) {
-       const res = await fetch('/api/search', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ query })
-       });
-       return await res.json();
-     }
-   ===================================================================== */
+/* This app is a framework without a concrete backend. To integrate API, 
+replace `searchListings` with a real call to the matching API used*/
 
 async function saveListingToBackend(listing){
   if (state.db){
@@ -175,9 +144,8 @@ function imageUrlAt(listing, i){
   return resolveImageUrl(listing.images && listing.images[i]);
 }
 
-/* =====================================================================
-   ROUTING
-   ===================================================================== */
+//ROUTING: 
+
 function currentRoute(){
   const h = (location.hash || '').replace('#','');
   return ['buy','sell','listings'].includes(h) ? h : 'buy';
@@ -608,9 +576,6 @@ function wireSellView(){
   });
 }
 
-/* =====================================================================
-   BOOT
-   ===================================================================== */
 renderView();
 initCapabilities();
 
