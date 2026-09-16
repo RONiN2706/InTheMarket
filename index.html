@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InTheMarket — Buy &amp; Sell Refurbished Electronics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="#buy" class="logo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="6" cy="6" r="2.4" fill="currentColor"/>
+        <circle cx="18" cy="6" r="2.4" fill="currentColor"/>
+        <circle cx="6" cy="18" r="2.4" fill="currentColor"/>
+        <circle cx="18" cy="18" r="2.4" fill="currentColor"/>
+        <path d="M8 6h8M6 8v8M18 8v8M8 18h8" stroke="currentColor" stroke-width="1.4"/>
+        <circle cx="12" cy="12" r="2.2" fill="currentColor"/>
+      </svg>
+      <span class="logo-text">InTheMarket</span>
+    </a>
+    <nav class="mainnav" id="mainnav">
+      <a href="#buy" data-route="buy">Buy</a>
+      <a href="#sell" data-route="sell">Sell</a>
+      <a href="#listings" data-route="listings">All Listings</a>
+    </nav>
+  </div>
+</header>
+
+<div id="mode-banner-slot"></div>
+
+<main id="view-root"></main>
+
+<div class="modal-overlay" id="modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <button class="modal-close" id="modal-close" aria-label="Close">×</button>
+    <div class="modal-gallery" id="modal-gallery"></div>
+    <div class="modal-body">
+      <h2 id="modal-title"></h2>
+      <div class="modal-meta" id="modal-meta"></div>
+      <p class="modal-desc" id="modal-desc"></p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">InTheMarket — a framework preview. Search matching and listing storage are wired to placeholder logic; see inline code comments for where to connect real services.</div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
