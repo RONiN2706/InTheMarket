@@ -574,6 +574,11 @@ function wireSellView(){
 
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('file-input');
+  if (!dropzone || !fileInput) return;
+
+  if (dropzone.dataset.bound === 'true') return;
+  dropzone.dataset.bound = 'true';
+
   dropzone.addEventListener('click', () => fileInput.click());
   dropzone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); fileInput.click(); } });
   fileInput.addEventListener('change', () => { handleFiles(fileInput.files); fileInput.value = ''; });
@@ -582,6 +587,9 @@ function wireSellView(){
   dropzone.addEventListener('drop', (e) => { if (e.dataTransfer.files) handleFiles(e.dataTransfer.files); });
 
   const form = document.getElementById('sell-form');
+  if (!form || form.dataset.bound === 'true') return;
+  form.dataset.bound = 'true';
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const submitBtn = document.getElementById('submit-btn');

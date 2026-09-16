@@ -14,21 +14,17 @@ The core computer-vision logic for product verification:
 
 VISION PROVIDER
 ---------------
-The default provider calls Anthropic's Claude API (multimodal messages) with
-the extracted frames as image blocks. That's a real, working vision analysis
-path — set an ANTHROPIC_API_KEY environment variable to use it.
+The default provider calls Gemini via the Google Generative AI SDK with the
+extracted frames as image parts. Set a GEMINI_API_KEY environment variable to
+use the real analysis path.
 
-If no API key is configured (or the `anthropic` package isn't installed),
-this module falls back to `_mock_vision_analysis()`, which just echoes the
-seller's claimed fields back with a "mock": true flag. That keeps the whole
-verification flow runnable end-to-end with no credentials, the same way the
-front-end marketplace app falls back to a local-only mode when it has no
-backend attached.
+If no Gemini key is configured, this module falls back to
+`_mock_vision_analysis()`, which echoes the seller's claimed fields with a
+`"mock": true` flag so the app stays clickable in local demo mode.
 
-To swap in a different vision provider (Google Cloud Vision, AWS Rekognition,
-a self-hosted model, etc.), replace the body of `analyze_frames_with_vision_api`
-— it just needs to return a (metadata_dict, provider_name) tuple in the same
-shape as `_mock_vision_analysis`.
+To swap in a different vision provider, replace the body of
+`analyze_frames_with_vision_api()` — it just needs to return a
+(metadata_dict, provider_name) tuple in the same shape as the mock result.
 """
 
 from __future__ import annotations
@@ -72,7 +68,7 @@ import numpy as np
 # the detected condition is from the claimed one.
 CONDITION_ORDER = {"like-new": 0, "good": 1, "fair": 2, "parts": 3}
 
-DEFAULT_MODEL = "claude-sonnet-4-6"
+DEFAULT_MODEL = "gemini-3.6-flash"
 
 
 class VideoProcessingError(Exception):
@@ -369,15 +365,25 @@ def analyze_frames_with_vision_api(
 # 3. CLAIMED vs. DETECTED COMPARISON
 # =============================================================================
 
+def _tokenize_product_name(value: str) -> set[str]:
+    value = (value or "").lower()
+    value = re.sub(r"[^a-z0-9]+", " ", value)
+    return {token for token in value.split() if token and token not in {"the", "for", "and", "with", "plus"}}
+
+
+def _extract_brand(value: str) -> str:
+    tokens = _tokenize_product_name(value)
+    for token in ["apple", "samsung", "google", "microsoft", "hp", "dell", "lenovo", "sony", "lg", "oneplus", "motorola"]:
+        if token in tokens:
+            return token
+    return next(iter(sorted(tokens)), "")
+
+
 def build_comparison(claimed: dict, detected: dict) -> dict:
     """
-    Compare the seller's claimed fields against what the vision model
-    detected, and decide the overall verification status:
-
-      - "mismatch"     — wrong category, or condition is way off (auto-reject
-                          from the happy path; a human should look at it)
-      - "needs_review"  — close, but not clean enough to auto-verify
-      - "verified"      — detected fields line up with the listing
+    Compare the seller's claimed fields against what the vision model detected.
+    The score is intentionally identity-first: if the item brand/model is wrong,
+    it cannot be auto-verified even if the condition grade is close.
     """
     claimed_name = (claimed.get("product_name") or "").strip().lower()
     detected_name = (detected.get("product_name") or "").strip().lower()
@@ -393,12 +399,43 @@ def build_comparison(claimed: dict, detected: dict) -> dict:
         abs(claimed_rank - detected_rank) if claimed_rank is not None and detected_rank is not None else None
     )
 
+    claimed_brand = _extract_brand(claimed_name)
+    detected_brand = _extract_brand(detected_name)
+    same_brand = bool(claimed_brand and detected_brand and claimed_brand == detected_brand) or (not claimed_brand and not detected_brand)
+
+    product_identity_score = 0.0
+    if type_match:
+        product_identity_score += 0.45
+    if claimed_name and detected_name:
+        if name_similarity >= 0.8:
+            product_identity_score += 0.35
+        elif name_similarity >= 0.5:
+            product_identity_score += 0.2
+        elif name_similarity >= 0.3:
+            product_identity_score += 0.1
+        if claimed_brand and detected_brand and not same_brand:
+            product_identity_score -= 0.4
+
+    condition_score = 0.25
+    if condition_delta is None:
+        condition_score = 0.15
+    elif condition_delta >= 2:
+        condition_score = 0.0
+    elif condition_delta == 1:
+        condition_score = 0.12
+    elif condition_delta == 0:
+        condition_score = 0.25
+
+    trust_score = max(0.0, min(1.0, product_identity_score + condition_score))
+
     if not type_match:
         status, reason = "mismatch", "The detected product category doesn't match the listed category."
+    elif claimed_name and detected_name and not same_brand and name_similarity < 0.8:
+        status, reason = "mismatch", "The detected item appears to be a different brand or model than the listing title."
     elif condition_delta is not None and condition_delta >= 2:
         status, reason = "mismatch", "The detected condition is significantly different from the listed condition."
-    elif name_similarity < 0.3:
-        status, reason = "needs_review", "The detected product name looks quite different from the listing title."
+    elif trust_score < 0.55:
+        status, reason = "needs_review", "The item identity or condition is too inconsistent to auto-verify."
     elif condition_delta == 1:
         status, reason = "needs_review", "The detected condition is one grade off from the listed condition."
     else:
@@ -408,6 +445,7 @@ def build_comparison(claimed: dict, detected: dict) -> dict:
         "product_name_similarity": round(name_similarity, 2),
         "product_type_match": type_match,
         "condition_delta": condition_delta,
+        "trust_score": round(trust_score, 2),
         "status": status,
         "status_reason": reason,
     }

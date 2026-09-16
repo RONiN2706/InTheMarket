@@ -111,6 +111,7 @@ class TestExtractKeyFrames(unittest.TestCase):
 class TestMockVisionAnalysis(unittest.TestCase):
     def setUp(self):
         os.environ.pop("ANTHROPIC_API_KEY", None)
+        os.environ.pop("GEMINI_API_KEY", None)
 
     def test_mock_mode_echoes_claimed_fields(self):
         claimed = {"product_name": "iPhone 13 Pro", "product_type": "Smartphones & Tablets", "condition": "good"}
@@ -146,6 +147,13 @@ class TestBuildComparison(unittest.TestCase):
         result = build_comparison(claimed, detected)
         self.assertEqual(result["status"], "needs_review")
 
+    def test_brand_mismatch_reduces_trust_score(self):
+        claimed = {"product_name": "Apple iPhone 13 Pro", "product_type": "Smartphones & Tablets", "condition": "good"}
+        detected = {"product_name": "Samsung Galaxy S23", "product_type": "Smartphones & Tablets", "condition": "good"}
+        result = build_comparison(claimed, detected)
+        self.assertLess(result["trust_score"], 0.6)
+        self.assertNotEqual(result["status"], "verified")
+
 
 class TestFullPipelineJSONShape(unittest.TestCase):
     """Runs extraction + mock analysis + comparison together, like app.py does,
@@ -153,6 +161,7 @@ class TestFullPipelineJSONShape(unittest.TestCase):
 
     def test_end_to_end_metadata_shape(self):
         os.environ.pop("ANTHROPIC_API_KEY", None)
+        os.environ.pop("GEMINI_API_KEY", None)
         with tempfile.TemporaryDirectory() as tmp:
             video_path = Path(tmp) / "scan.mp4"
             frames_dir = Path(tmp) / "frames"
