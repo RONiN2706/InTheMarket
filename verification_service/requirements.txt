@@ -1,7 +1,10 @@
 Flask>=3.0
 opencv-python-headless>=4.9
 numpy>=1.26
+python-dotenv>=1.0.1
 
 # Optional — only needed for real vision analysis. Without it (or without
-# ANTHROPIC_API_KEY set), the app runs in mock mode.
+# ANTHROPIC_API_KEY / GOOGLE_APPLICATION_CREDENTIALS set), the app runs in
+# mock mode.
 anthropic>=0.34.0
+google-cloud-vision>=3.7.0
