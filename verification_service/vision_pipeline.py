@@ -238,55 +238,65 @@ def _mock_vision_analysis(claimed: dict, categories: list[str], conditions: list
     }
 
 
-def _google_vision_analysis(claimed: dict, categories: list[str], conditions: list[dict], frame_paths: list[str]) -> dict:
-    """Build a Google Vision-based result in the same JSON shape as Claude."""
+def _gemini_analysis(claimed: dict, categories: list[str], conditions: list[dict], frame_paths: list[str]) -> dict:
+    """Call Gemini as a multimodal inspector and return the same JSON schema as Claude."""
     try:
-        from google.cloud import vision_v1
+        import google.generativeai as genai
     except ImportError as exc:  # pragma: no cover - import guard for optional dependency
         raise VisionAPIError(
-            "Google Cloud Vision is not installed. Run: pip install google-cloud-vision"
+            "Google Generative AI is not installed. Run: pip install google-generativeai"
         ) from exc
 
-    credentials = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-    if not credentials:
-        raise VisionAPIError(
-            "GOOGLE_APPLICATION_CREDENTIALS is not set. Point it to your service-account JSON file."
-        )
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise VisionAPIError("GEMINI_API_KEY is not set. Add it to your environment before running the app.")
 
-    client = vision_v1.ImageAnnotatorClient()
-    labels: list[str] = []
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-2.5-flash")
 
+    category_list = ", ".join(f'"{c}"' for c in categories)
+    condition_list = ", ".join(f'"{c["value"]}"' for c in conditions)
+
+    prompt = f"""You are a product-condition inspector for a secondhand electronics marketplace.
+
+You are given still frames extracted from a short video scan of the physical item.
+
+Seller claim:
+- product name: {claimed.get('product_name') or '(not provided)'}
+- category: {claimed.get('product_type') or '(not provided)'}
+- claimed condition: {claimed.get('condition') or '(not provided)'}
+
+Look only at the visible item in the frames. Identify the product, assess physical condition, and grade it independently.
+
+Return ONLY valid JSON with exactly this schema:
+{{
+  "product_name": "<specific product name/model you can identify, or your best guess>",
+  "product_type": "<one of: {category_list}>",
+  "condition": "<one of: {condition_list}>",
+  "condition_confidence": <number between 0 and 1>,
+  "condition_notes": "<1-3 sentences describing visible wear/damage and why you picked this grade>",
+  "detected_defects": ["<short phrase>", "..."]
+}}
+
+Use an empty array for detected_defects if there is no visible damage."""
+
+    image_parts = []
     for p in frame_paths:
         with open(p, "rb") as fh:
-            image = vision_v1.Image(content=fh.read())
-        response = client.label_detection(image=image)
-        labels.extend(label.description.lower() for label in response.label_annotations or [])
+            image_parts.append({"mime_type": "image/jpeg", "data": fh.read()})
 
-    detected_text = " ".join(labels)
-    matched_category = next((c for c in categories if c.lower() in detected_text), None)
+    try:
+        response = model.generate_content([prompt, *image_parts])
+        text = getattr(response, "text", "") or ""
+    except Exception as exc:  # pragma: no cover - API failure path
+        raise VisionAPIError(f"Gemini API request failed: {exc}") from exc
 
-    if matched_category is None:
-        matched_category = claimed.get("product_type") or categories[0] if categories else "Other Electronics"
+    try:
+        parsed = _extract_json(text)
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise VisionAPIError(f"Gemini returned output that couldn't be parsed as JSON: {text[:300]!r}") from exc
 
-    damage_terms = ["broken", "cracked", "scratch", "scratched", "dent", "damaged", "screen", "missing"]
-    if any(term in detected_text for term in damage_terms):
-        detected_condition = "fair"
-    elif any(term in detected_text for term in ["new", "pristine", "perfect", "brand", "sealed"]):
-        detected_condition = "like-new"
-    else:
-        detected_condition = claimed.get("condition") or (conditions[0]["value"] if conditions else "good")
-
-    parsed = {
-        "product_name": claimed.get("product_name") or "Unidentified item",
-        "product_type": matched_category,
-        "condition": detected_condition,
-        "condition_confidence": 0.72,
-        "condition_notes": (
-            "Google Vision label analysis suggests the item matches the listed category and shows a "
-            f"general condition estimate. Detected labels: {detected_text[:300] or 'no labels extracted'}"
-        ),
-        "detected_defects": [],
-    }
+    parsed.setdefault("detected_defects", [])
     return parsed
 
 
@@ -298,60 +308,15 @@ def analyze_frames_with_vision_api(
     model: str = DEFAULT_MODEL,
 ) -> tuple[dict, str]:
     """
-    Send the extracted frames to a vision model and return
+    Send the extracted frames to Gemini and return
     (parsed_metadata_dict, provider_name).
 
-    Prefer Google Vision when credentials are configured; otherwise fall back
-    to Claude when ANTHROPIC_API_KEY is present; otherwise use mock data.
+    If no GEMINI_API_KEY is set, fall back to a mock result.
     """
-    google_creds = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-    if google_creds:
-        try:
-            return _google_vision_analysis(claimed, categories, conditions, frame_paths), "google-cloud-vision"
-        except VisionAPIError:
-            pass
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
+    try:
+        return _gemini_analysis(claimed, categories, conditions, frame_paths), "gemini"
+    except VisionAPIError:
         return _mock_vision_analysis(claimed, categories, conditions), "mock"
-
-    try:
-        import anthropic
-    except ImportError:
-        return _mock_vision_analysis(claimed, categories, conditions), "mock"
-
-    client = anthropic.Anthropic(api_key=api_key)
-
-    content: list[dict] = [{"type": "text", "text": _build_prompt(claimed, categories, conditions)}]
-    for p in frame_paths:
-        data = base64.standard_b64encode(Path(p).read_bytes()).decode("ascii")
-        content.append(
-            {
-                "type": "image",
-                "source": {"type": "base64", "media_type": "image/jpeg", "data": data},
-            }
-        )
-
-    try:
-        response = client.messages.create(
-            model=model,
-            max_tokens=1024,
-            messages=[{"role": "user", "content": content}],
-        )
-    except Exception as exc:  # anthropic.APIError and friends
-        raise VisionAPIError(f"Vision API request failed: {exc}") from exc
-
-    text = "".join(block.text for block in response.content if getattr(block, "type", None) == "text")
-
-    try:
-        parsed = _extract_json(text)
-    except (json.JSONDecodeError, ValueError) as exc:
-        raise VisionAPIError(
-            f"Vision API returned output that couldn't be parsed as JSON: {text[:300]!r}"
-        ) from exc
-
-    parsed.setdefault("detected_defects", [])
-    return parsed, "anthropic-claude"
 
 
 # =============================================================================

@@ -3,8 +3,6 @@ opencv-python-headless>=4.9
 numpy>=1.26
 python-dotenv>=1.0.1
 
-# Optional — only needed for real vision analysis. Without it (or without
-# ANTHROPIC_API_KEY / GOOGLE_APPLICATION_CREDENTIALS set), the app runs in
-# mock mode.
-anthropic>=0.34.0
-google-cloud-vision>=3.7.0
+# Required for real multimodal frame analysis with Gemini.
+# Without a GEMINI_API_KEY, the app falls back to mock mode.
+google-generativeai>=0.8.0
