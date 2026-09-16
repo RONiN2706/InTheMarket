@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify your listing — InTheMarket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/verify.css') }}">
+</head>
+<body data-listing-id="{{ listing.id }}" data-return-url="{{ return_url }}">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="6" cy="6" r="2.4" fill="currentColor"/>
+      <circle cx="18" cy="6" r="2.4" fill="currentColor"/>
+      <circle cx="6" cy="18" r="2.4" fill="currentColor"/>
+      <circle cx="18" cy="18" r="2.4" fill="currentColor"/>
+      <path d="M8 6h8M6 8v8M18 8v8M8 18h8" stroke="currentColor" stroke-width="1.4"/>
+      <circle cx="12" cy="12" r="2.2" fill="currentColor"/>
+    </svg>
+    <span class="logo-text">InTheMarket</span>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <p class="step-eyebrow">Step 2 of 2 — Verify your item</p>
+    <h1>Scan your item to verify the listing</h1>
+    <p class="lede">Record a short video slowly turning the item so we can confirm what it is and grade its condition. This helps buyers trust the listing without you writing a novel.</p>
+
+    <div class="listing-summary">
+      <div>
+        <div class="name">{{ listing.productName }}</div>
+        <div class="sub">{{ listing.description[:90] }}{{ '…' if listing.description|length > 90 else '' }}</div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <span class="tag">{{ listing.productType }}</span>
+        <span class="badge" data-grade="{{ listing.condition }}">{{ condition_label }}</span>
+        <span class="price">₹{{ '{:,.0f}'.format(listing.price|float) }}</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>How to scan it</h2>
+      <p class="panel-sub">8–15 seconds is plenty. Good lighting matters more than a fancy camera.</p>
+      <ul class="scan-tips">
+        <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Turn the item slowly so the front, back, and both sides are all visible</li>
+        <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Hold it under a light, not in front of a window or lamp</li>
+        <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Get close on any scratches, cracks, or dents so they're clearly visible</li>
+        <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> If it powers on, show the screen lit up</li>
+      </ul>
+    </div>
+
+    <div class="panel" id="record-panel">
+      <h2>Record your scan</h2>
+      <p class="panel-sub">This runs locally in your browser until you submit it.</p>
+
+      <div class="camera-frame" id="camera-frame">
+        <div class="camera-placeholder" id="camera-placeholder">Requesting camera access…</div>
+        <video id="live-video" autoplay playsinline muted hidden></video>
+        <video id="playback-video" playsinline controls hidden></video>
+        <span class="rec-pill" id="rec-pill" hidden><span class="rec-dot"></span><span id="rec-timer">0:00</span></span>
+      </div>
+      <div class="camera-error" id="camera-error"></div>
+
+      <div class="recorder-controls" id="recorder-controls">
+        <button type="button" class="btn btn-primary" id="start-btn" disabled>Start recording</button>
+      </div>
+      <p class="recorder-note">Recording stops automatically after 20 seconds.</p>
+    </div>
+
+    <div class="panel" id="analyzing-panel" hidden>
+      <div class="analyzing">
+        <span class="spinner"></span>
+        <span id="analyzing-label">Uploading scan…</span>
+      </div>
+    </div>
+
+    <div class="panel" id="results-panel" hidden>
+      <h2>Verification result</h2>
+      <div class="result-status" id="result-status">
+        <span class="dot"></span>
+        <span id="result-status-text"></span>
+      </div>
+
+      <div class="result-grid">
+        <div class="result-field">
+          <div class="label">Detected product</div>
+          <div class="value" id="det-name"></div>
+        </div>
+        <div class="result-field">
+          <div class="label">Detected category</div>
+          <div class="value" id="det-type"></div>
+        </div>
+        <div class="result-field">
+          <div class="label">Detected condition</div>
+          <div class="value" id="det-condition"></div>
+        </div>
+        <div class="result-field">
+          <div class="label">Confidence</div>
+          <div class="value" id="det-confidence"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="label" style="font-size:11.5px;color:var(--text-muted);margin-bottom:4px;">Notes</div>
+        <p id="det-notes" style="font-size:13.5px;"></p>
+      </div>
+
+      <div id="defects-wrap" hidden>
+        <div class="label" style="font-size:11.5px;color:var(--text-muted);margin-bottom:4px;">Visible issues</div>
+        <ul class="defect-list" id="defects-list"></ul>
+      </div>
+
+      <div class="frame-strip" id="frame-strip"></div>
+
+      <div class="mock-note" id="mock-note" hidden>
+        This result came from mock analysis (no ANTHROPIC_API_KEY configured on the server) — it just reflects the fields you entered, not real image analysis.
+      </div>
+
+      <div class="result-actions" id="result-actions"></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">Frames are analyzed once you submit — nothing is sent until you tap "Submit for verification".</div>
+</footer>
+
+<script src="{{ url_for('static', filename='js/verify.js') }}"></script>
+</body>
+</html>

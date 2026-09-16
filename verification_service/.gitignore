@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+storage/listings.json
+storage/uploads/*
+storage/frames/*
+storage/verification_metadata/*
+!storage/uploads/.gitkeep
+!storage/frames/.gitkeep
+!storage/verification_metadata/.gitkeep
+.env

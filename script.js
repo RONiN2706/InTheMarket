@@ -15,6 +15,8 @@ const state = {
   listingsFilter: 'all',
 };
 
+const VERIFICATION_SERVICE_URL = 'http://localhost:5001';
+
 const CATEGORIES = [
   'Smartphones & Tablets',
   'Laptops',
@@ -97,6 +99,41 @@ async function initCapabilities(){
   state.capsChecked = true;
   renderModeBanner();
   subscribeListings();
+  handleVerificationReturn();
+}
+
+async function handleVerificationReturn(){
+  const params = new URLSearchParams(location.search);
+  const listingId = params.get('verified_listing');
+  if (params.get('verification') !== 'verified' || !listingId) return;
+
+  const returnKey = 'verification-published-' + listingId;
+  if (sessionStorage.getItem(returnKey)) return;
+  sessionStorage.setItem(returnKey, 'pending');
+
+  try {
+    const response = await fetch(`${VERIFICATION_SERVICE_URL}/api/listings/${encodeURIComponent(listingId)}`);
+    const pending = await response.json().catch(() => ({}));
+    if (!response.ok || pending.status !== 'verified') throw new Error(pending.error || 'Verification has not been completed.');
+
+    await saveListingToBackend({
+      productType: pending.productType,
+      productName: pending.productName,
+      condition: pending.condition,
+      price: Number(pending.price),
+      description: pending.description,
+      images: pending.images || [],
+      verification: { listingId, status: pending.status },
+      createdAt: Date.now(),
+    });
+    sessionStorage.setItem(returnKey, 'published');
+    history.replaceState(null, '', location.pathname + location.hash);
+    location.hash = '#listings';
+  } catch (err) {
+    sessionStorage.removeItem(returnKey);
+    console.error('failed to publish verified listing', err);
+    alert('Verification succeeded, but the listing could not be published. Please return to the verification page and try again.');
+  }
 }
 
 /* =====================================================================
@@ -434,8 +471,8 @@ function viewSell(){
           </div>
 
           <div class="submit-row">
-            <button type="submit" class="btn btn-primary" id="submit-btn">Publish listing</button>
-            <span class="submit-note">Metadata is sent to the backend once published.</span>
+            <button type="submit" class="btn btn-primary" id="submit-btn">Continue to verification</button>
+            <span class="submit-note">Your listing is published only after video verification.</span>
           </div>
         </form>
       </div>
@@ -546,7 +583,7 @@ function wireSellView(){
     if (!valid) return;
 
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Publishing…';
+    submitBtn.textContent = 'Starting verification…';
 
     const listing = {
       productType: type,
@@ -559,19 +596,26 @@ function wireSellView(){
     };
 
     try {
-      await saveListingToBackend(listing);
-      document.getElementById('success-note').classList.add('show');
-      form.reset();
-      state.stagedImages = [];
-      renderThumbs();
-      document.querySelectorAll('.field.invalid').forEach(f => f.classList.remove('invalid'));
-      window.setTimeout(() => { location.hash = '#listings'; }, 700);
+      const response = await fetch(`${VERIFICATION_SERVICE_URL}/api/listings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(listing),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.verify_url) throw new Error(data.error || 'Could not start verification.');
+
+      const returnUrl = window.location.href.split('?')[0];
+      const verifyUrl = new URL(data.verify_url, VERIFICATION_SERVICE_URL);
+      verifyUrl.searchParams.set('return_url', returnUrl);
+      window.location.href = verifyUrl.href;
     } catch(err){
-      console.error('failed to save listing', err);
-      alert('Something went wrong publishing this listing. Please try again.');
+      console.error('failed to start verification', err);
+      alert('Something went wrong starting verification. Please try again.');
     } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Publish listing';
+      if (document.body.contains(submitBtn)) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Continue to verification';
+      }
     }
   });
 }

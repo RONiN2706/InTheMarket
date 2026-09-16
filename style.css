@@ -1,4 +1,4 @@
-  :root{
+:root{
     --bg:#EEF0E9; --bg-alt:#E3E8DD; --card:#FBFCF9;
     --text:#171B18; --text-muted:#5B655B;
     --line:#CBD2C4; --line-strong:#AEB8A6;
@@ -177,8 +177,17 @@
   .listing-card .top-row{display:flex; justify-content:space-between; gap:8px; align-items:flex-start;}
   .listing-card h3{font-size:15.5px; margin:0; line-height:1.3;}
   .listing-card .meta-row{display:flex; gap:6px; flex-wrap:wrap;}
-  .listing-card .desc-snip{font-size:13px; color:var(--text-muted); line-height:1.45; margin:0;
-    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+  .listing-card .desc-snip{
+    font-size:13px;
+    color:var(--text-muted);
+    line-height:1.45;
+    margin:0;
+    display:-webkit-box;
+    line-clamp:2;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
   .listing-card .bottom-row{display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:6px;}
   .listing-card .time-ago{font-size:11.5px; color:var(--text-muted);}
 
