@@ -43,7 +43,8 @@ from typing import Any
 
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    _ENV_PATH = Path(__file__).resolve().parent / ".env"
+    load_dotenv(_ENV_PATH)
 except ImportError:
     pass
 
@@ -217,9 +218,9 @@ def _extract_json(text: str) -> dict:
 
 def _mock_vision_analysis(claimed: dict, categories: list[str], conditions: list[dict]) -> dict:
     """
-    No ANTHROPIC_API_KEY (or no `anthropic` package) configured — return a
-    plausible stand-in so the verification flow is still fully clickable.
-    This just echoes the seller's own claims back, clearly labeled as a mock.
+    No Gemini API key is configured — return a plausible stand-in so the
+    verification flow stays clickable while indicating that real analysis is
+    unavailable.
     """
     fallback_condition = conditions[0]["value"] if conditions else "good"
     fallback_category = categories[0] if categories else "Other Electronics"
@@ -229,9 +230,9 @@ def _mock_vision_analysis(claimed: dict, categories: list[str], conditions: list
         "condition": claimed.get("condition") or fallback_condition,
         "condition_confidence": 0.75,
         "condition_notes": (
-            "Mock analysis — no ANTHROPIC_API_KEY is configured, so this simply "
+            "Mock analysis — no GEMINI_API_KEY is configured, so this simply "
             "echoes the seller's claimed fields. Set the environment variable "
-            "(and `pip install anthropic`) to run real image analysis."
+            "to use real image analysis."
         ),
         "detected_defects": [],
         "mock": True,
@@ -240,19 +241,42 @@ def _mock_vision_analysis(claimed: dict, categories: list[str], conditions: list
 
 def _gemini_analysis(claimed: dict, categories: list[str], conditions: list[dict], frame_paths: list[str]) -> dict:
     """Call Gemini as a multimodal inspector and return the same JSON schema as Claude."""
-    try:
-        import google.generativeai as genai
-    except ImportError as exc:  # pragma: no cover - import guard for optional dependency
-        raise VisionAPIError(
-            "Google Generative AI is not installed. Run: pip install google-generativeai"
-        ) from exc
-
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise VisionAPIError("GEMINI_API_KEY is not set. Add it to your environment before running the app.")
 
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    try:
+        from google import genai
+        from google.genai import types
+    except ImportError as exc:  # pragma: no cover - import guard for optional dependency
+        try:
+            import google.generativeai as genai
+            from google.generativeai import types
+        except ImportError as fallback_exc:
+            raise VisionAPIError(
+                "Google Generative AI is not installed. Run: pip install google-generativeai"
+            ) from fallback_exc
+
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        image_parts = []
+        for p in frame_paths:
+            with open(p, "rb") as fh:
+                image_parts.append({"mime_type": "image/jpeg", "data": fh.read()})
+
+        try:
+            response = model.generate_content([prompt, *image_parts])
+            text = getattr(response, "text", "") or ""
+        except Exception as exc:  # pragma: no cover - API failure path
+            raise VisionAPIError(f"Gemini API request failed: {exc}") from exc
+
+        try:
+            parsed = _extract_json(text)
+        except (json.JSONDecodeError, ValueError) as exc:
+            raise VisionAPIError(f"Gemini returned output that couldn't be parsed as JSON: {text[:300]!r}") from exc
+
+        parsed.setdefault("detected_defects", [])
+        return parsed
 
     category_list = ", ".join(json.dumps(c) for c in categories)
     condition_list = ", ".join(json.dumps(c.get("value", "")) for c in conditions)
@@ -283,10 +307,14 @@ Use an empty array for detected_defects if there is no visible damage."""
     image_parts = []
     for p in frame_paths:
         with open(p, "rb") as fh:
-            image_parts.append({"mime_type": "image/jpeg", "data": fh.read()})
+            image_parts.append(types.Part.from_bytes(data=fh.read(), mime_type="image/jpeg"))
 
     try:
-        response = model.generate_content([prompt, *image_parts])
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[prompt, *image_parts],
+        )
         text = getattr(response, "text", "") or ""
     except Exception as exc:  # pragma: no cover - API failure path
         raise VisionAPIError(f"Gemini API request failed: {exc}") from exc
