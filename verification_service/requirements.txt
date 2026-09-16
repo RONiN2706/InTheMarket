@@ -2,7 +2,4 @@ Flask>=3.0
 opencv-python-headless>=4.9
 numpy>=1.26
 python-dotenv>=1.0.1
-
-# Required for real multimodal frame analysis with Gemini.
-# Without a GEMINI_API_KEY, the app falls back to mock mode.
 google-generativeai>=0.8.0
