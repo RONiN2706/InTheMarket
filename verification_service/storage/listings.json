@@ -1,0 +1,53 @@
+[
+  {
+    "id": "cc08f6b0e7",
+    "productType": "Smartphones & Tablets",
+    "productName": "samsung galaxy 67",
+    "condition": "good",
+    "price": 33564,
+    "description": "abc",
+    "images": [
+      {
+        "id": "local-img-mu41qp7cjke2",
+        "url": "blob:http://localhost:5500/183b5e48-62b5-4eea-b818-e15df37024b4"
+      }
+    ],
+    "status": "pending_verification",
+    "created_at": "2026-09-16T11:57:51.375910+00:00",
+    "verification_metadata_path": null
+  },
+  {
+    "id": "4d9cea6684",
+    "productType": "Smartphones & Tablets",
+    "productName": "abc",
+    "condition": "fair",
+    "price": 4500,
+    "description": "abc",
+    "images": [
+      {
+        "id": "local-img-mu41xnmovqu4",
+        "url": "blob:http://localhost:5500/655e265c-d3d3-4c55-a53b-fa04fd4c7e21"
+      }
+    ],
+    "status": "pending_verification",
+    "created_at": "2026-09-16T12:03:16.840789+00:00",
+    "verification_metadata_path": null
+  },
+  {
+    "id": "1b30b7dd33",
+    "productType": "Smartphones & Tablets",
+    "productName": "Nothing Phone 4A",
+    "condition": "like-new",
+    "price": 27500,
+    "description": "epic phone very nice no damage",
+    "images": [
+      {
+        "id": "local-img-mu424a5wxtlt",
+        "url": "blob:http://localhost:5500/667d7428-7787-40d5-9900-332dc0239b13"
+      }
+    ],
+    "status": "verified",
+    "created_at": "2026-09-16T12:08:25.680678+00:00",
+    "verification_metadata_path": "storage\\verification_metadata\\1b30b7dd33.json"
+  }
+]
