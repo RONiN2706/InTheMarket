@@ -41,12 +41,29 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
+def _load_env_from_project_file() -> None:
+    """Load environment variables from the service-local .env file regardless of CWD."""
+    env_path = Path(__file__).resolve().parent / ".env"
+    if not env_path.exists():
+        return
+
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        os.environ.setdefault(key, value)
+
+
 try:
     from dotenv import load_dotenv
-    _ENV_PATH = Path(__file__).resolve().parent / ".env"
-    load_dotenv(_ENV_PATH)
+    load_dotenv(Path(__file__).resolve().parent / ".env")
 except ImportError:
     pass
+
+_load_env_from_project_file()
 
 import cv2
 import numpy as np
@@ -248,7 +265,7 @@ def _gemini_analysis(claimed: dict, categories: list[str], conditions: list[dict
     try:
         from google import genai
         from google.genai import types
-    except ImportError as exc:  # pragma: no cover - import guard for optional dependency
+    except ImportError as exc:  
         try:
             import google.generativeai as genai
             from google.generativeai import types
@@ -258,7 +275,7 @@ def _gemini_analysis(claimed: dict, categories: list[str], conditions: list[dict
             ) from fallback_exc
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel("gemini-3.6-flash")
         image_parts = []
         for p in frame_paths:
             with open(p, "rb") as fh:
@@ -312,7 +329,7 @@ Use an empty array for detected_defects if there is no visible damage."""
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.6-flash",
             contents=[prompt, *image_parts],
         )
         text = getattr(response, "text", "") or ""
@@ -343,7 +360,8 @@ def analyze_frames_with_vision_api(
     """
     try:
         return _gemini_analysis(claimed, categories, conditions, frame_paths), "gemini"
-    except VisionAPIError:
+    except VisionAPIError as exc:
+        print(f"[verification] Gemini fallback activated: {exc}")
         return _mock_vision_analysis(claimed, categories, conditions), "mock"
 
 
