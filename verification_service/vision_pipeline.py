@@ -254,8 +254,8 @@ def _gemini_analysis(claimed: dict, categories: list[str], conditions: list[dict
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel("gemini-2.5-flash")
 
-    category_list = ", ".join(f'"{c}"' for c in categories)
-    condition_list = ", ".join(f'"{c["value"]}"' for c in conditions)
+    category_list = ", ".join(json.dumps(c) for c in categories)
+    condition_list = ", ".join(json.dumps(c.get("value", "")) for c in conditions)
 
     prompt = f"""You are a product-condition inspector for a secondhand electronics marketplace.
 
