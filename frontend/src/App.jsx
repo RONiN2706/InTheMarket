@@ -1,495 +1,815 @@
+import techHero from "./assets/tech-hero.png"
 import {
   BrowserRouter,
   Routes,
   Route,
-  useNavigate
-} from "react-router-dom"
+  useNavigate,
+} from "react-router-dom";
 
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 
-import { getPublishedListings } from "./data/listings"
+import { getPublishedListings } from "./data/listings";
 
-import SearchResults from "./pages/SearchResults"
-import ProductDetails from "./pages/ProductDetails"
-import Sell from "./pages/Sell"
-import Profile from "./pages/Profile"
-import Verification from "./pages/verification"
-import VerificationStatus from "./pages/verificationstatus"
+import SearchResults from "./pages/SearchResults";
+import ProductDetails from "./pages/ProductDetails";
+import Sell from "./pages/Sell";
+import Profile from "./pages/Profile";
+import Verification from "./pages/verification";
+import VerificationStatus from "./pages/verificationstatus";
+
+import "./App.css";
 
 
-function Navbar() {
+/* =========================================================
+   ICONS
+   ========================================================= */
 
+function Icon({ children, size = 20 }) {
   return (
-    <nav className="navbar">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  );
+}
 
-      <div className="logo">
-        <a href="/">
-          IntheMarket
-        </a>
-      </div>
+function SearchIcon() {
+  return (
+    <Icon>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-4-4" />
+    </Icon>
+  );
+}
 
-      <ul className="nav-links">
+function HeartIcon() {
+  return (
+    <Icon>
+      <path d="M20.8 8.8c0 5-8.8 10-8.8 10s-8.8-5-8.8-10A4.8 4.8 0 0 1 12 6a4.8 4.8 0 0 1 8.8 2.8Z" />
+    </Icon>
+  );
+}
 
-        <li>
-          <a href="/">Browse</a>
-        </li>
+function MessageIcon() {
+  return (
+    <Icon>
+      <path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.4 8.4 0 0 1-3.5-.8L4 20l1.5-4A7.3 7.3 0 0 1 4 11.5 7.5 7.5 0 0 1 12 4a7.5 7.5 0 0 1 8 7.5Z" />
+      <path d="M17 9h.01M12 9h.01M7 9h.01" />
+    </Icon>
+  );
+}
 
-        <li>
-          <a href="/sell">Sell</a>
-        </li>
+function PinIcon() {
+  return (
+    <Icon size={17}>
+      <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+      <circle cx="12" cy="10" r="2.5" />
+    </Icon>
+  );
+}
 
-        <li>
-          <a href="/messages">Messages</a>
-        </li>
+function ArrowIcon() {
+  return (
+    <Icon size={21}>
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
+    </Icon>
+  );
+}
 
-        <li>
-          <a href="/saved">❤️ Saved</a>
-        </li>
+function PlusIcon() {
+  return (
+    <Icon size={17}>
+      <path d="M12 5v14M5 12h14" />
+    </Icon>
+  );
+}
 
-        <li>
-          <a href="/profile">Profile</a>
-        </li>
+function LaptopIcon() {
+  return (
+    <Icon size={27}>
+      <rect x="4" y="5" width="16" height="11" rx="1.5" />
+      <path d="M2 19h20" />
+    </Icon>
+  );
+}
 
-      </ul>
+function PhoneIcon() {
+  return (
+    <Icon size={27}>
+      <rect x="7" y="3" width="10" height="18" rx="2" />
+      <path d="M11 18h2" />
+    </Icon>
+  );
+}
 
-    </nav>
-  )
+function CpuIcon() {
+  return (
+    <Icon size={27}>
+      <rect x="6" y="6" width="12" height="12" rx="2" />
+      <path d="M9 9h6v6H9z" />
+      <path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M18 9h4M2 15h4M18 15h4" />
+    </Icon>
+  );
+}
+
+function GameIcon() {
+  return (
+    <Icon size={27}>
+      <path d="M7 8h10a5 5 0 0 1 4.7 6.7l-1.1 3a2.5 2.5 0 0 1-4.5.5L15 16H9l-1.1 2.2a2.5 2.5 0 0 1-4.5-.5l-1.1-3A5 5 0 0 1 7 8Z" />
+      <path d="M8 11v4M6 13h4M16 12h.01M19 14h.01" />
+    </Icon>
+  );
+}
+
+function HeadphoneIcon() {
+  return (
+    <Icon size={27}>
+      <path d="M4 14v-2a8 8 0 0 1 16 0v2" />
+      <path d="M4 14h3v6H5a1 1 0 0 1-1-1v-5ZM20 14h-3v6h2a1 1 0 0 0 1-1v-5Z" />
+    </Icon>
+  );
+}
+
+function CameraIcon() {
+  return (
+    <Icon size={27}>
+      <path d="M4 8h4l1.5-2h5L16 8h4v11H4V8Z" />
+      <circle cx="12" cy="13.5" r="3.2" />
+    </Icon>
+  );
+}
+
+function MonitorIcon() {
+  return (
+    <Icon size={27}>
+      <rect x="3" y="4" width="18" height="13" rx="1.5" />
+      <path d="M8 21h8M12 17v4" />
+    </Icon>
+  );
+}
+
+function MouseIcon() {
+  return (
+    <Icon size={27}>
+      <rect x="7" y="3" width="10" height="18" rx="5" />
+      <path d="M12 3v6M12 6h.01" />
+    </Icon>
+  );
+}
+
+function HomeIcon() {
+  return (
+    <Icon size={27}>
+      <path d="m3 11 9-8 9 8" />
+      <path d="M5 10v10h14V10M9 20v-6h6v6" />
+    </Icon>
+  );
 }
 
 
+/* =========================================================
+   NAVBAR
+   ========================================================= */
+
+function Navbar() {
+  const navigate = useNavigate();
+
+  return (
+    <nav className="market-navbar">
+
+      <button
+        className="brand"
+        onClick={() => navigate("/")}
+      >
+        <span className="brand-name">
+          In<span>The</span>Market
+        </span>
+
+        <span className="brand-subtitle">
+          Pre-owned. Next level.
+        </span>
+      </button>
+
+
+      <div className="nav-links">
+
+        <button onClick={() => navigate("/")}>
+          Browse
+        </button>
+
+        <button onClick={() => navigate("/how-it-works")}>
+          How it works
+        </button>
+
+        <button onClick={() => navigate("/why-inthemarket")}>
+          Why InTheMarket
+        </button>
+
+        <button onClick={() => navigate("/support")}>
+          Support
+        </button>
+
+      </div>
+
+
+      <div className="nav-actions">
+
+        <button className="nav-location">
+          <PinIcon />
+          <span>Vellore, 632014</span>
+          <span className="tiny-chevron">⌄</span>
+        </button>
+
+        <button className="nav-icon">
+          <HeartIcon />
+        </button>
+
+        <button className="nav-icon message-nav">
+          <MessageIcon />
+          <span className="notification">2</span>
+        </button>
+
+        <button
+          className="profile-avatar"
+          onClick={() => navigate("/profile")}
+        >
+          A
+        </button>
+
+        <button
+          className="sell-nav-button"
+          onClick={() => navigate("/sell")}
+        >
+          <PlusIcon />
+          Sell
+        </button>
+
+      </div>
+
+    </nav>
+  );
+}
+
+
+/* =========================================================
+   SEARCH BAR
+   ========================================================= */
+
 function SearchBar() {
-
-  const navigate = useNavigate()
-
+  const navigate = useNavigate();
 
   function handleSearch(event) {
-
-    event.preventDefault()
+    event.preventDefault();
 
     const query =
-      event.target.search.value.trim()
-
+      event.target.search.value.trim();
 
     if (!query) {
-
-      navigate("/search")
-
-      return
-
+      navigate("/search");
+      return;
     }
-
 
     navigate(
       `/search?q=${encodeURIComponent(query)}`
-    )
-
+    );
   }
-
 
   return (
     <form
-      className="search-bar"
+      className="ai-search"
       onSubmit={handleSearch}
     >
+
+      <div className="search-symbol">
+        <SearchIcon />
+      </div>
 
       <input
         name="search"
         type="text"
-        placeholder="Describe what you're looking for..."
+        placeholder='Try "gaming laptop under 50k near me"'
+        autoComplete="off"
       />
 
-      <button type="submit">
-        →
+      <div className="search-location">
+        <PinIcon />
+        <span>Vellore, 632014</span>
+        <span>⌄</span>
+      </div>
+
+      <button
+        className="search-submit"
+        type="submit"
+      >
+        <ArrowIcon />
       </button>
 
     </form>
-  )
+  );
 }
 
 
+/* =========================================================
+   SUGGESTIONS
+   ========================================================= */
+
 function Suggestions() {
-
-  const navigate = useNavigate()
-
+  const navigate = useNavigate();
 
   const suggestions = [
-    "iPhone under ₹30k",
+    "iPhone under 30k",
     "RTX 3060 near me",
     "PS5 in good condition",
     "Monitor for editing",
-    "Noise cancelling headphones"
-  ]
-
+    "Noise cancelling headphones",
+  ];
 
   return (
-    <div className="suggestions">
+    <div className="suggestion-row">
 
-      {suggestions.map((suggestion) => (
+      <span className="try-label">
+        Try these:
+      </span>
 
-        <button
-          key={suggestion}
-          onClick={() =>
-            navigate(
-              `/search?q=${encodeURIComponent(suggestion)}`
-            )
-          }
-        >
-          {suggestion}
-        </button>
+      <div className="suggestions">
 
-      ))}
+        {suggestions.map((suggestion) => (
+          <button
+            key={suggestion}
+            onClick={() =>
+              navigate(
+                `/search?q=${encodeURIComponent(suggestion)}`
+              )
+            }
+          >
+            {suggestion}
+          </button>
+        ))}
+
+      </div>
 
     </div>
-  )
+  );
 }
 
 
+/* =========================================================
+   CATEGORIES
+   ========================================================= */
+
 function Categories() {
-
-  const navigate = useNavigate()
-
+  const navigate = useNavigate();
 
   const categories = [
-    "All",
-    "Laptops",
-    "Phones",
-    "PC Components",
-    "Gaming",
-    "Audio",
-    "Cameras",
-    "Monitors",
-    "Accessories",
-    "Smart Home"
-  ]
-
+    ["all", "All", <div className="category-grid-icon">▦</div>],
+    ["laptops", "Laptops", <LaptopIcon />],
+    ["phones", "Phones", <PhoneIcon />],
+    ["pc-components", "PC Components", <CpuIcon />],
+    ["gaming", "Gaming", <GameIcon />],
+    ["audio", "Audio", <HeadphoneIcon />],
+    ["cameras", "Cameras", <CameraIcon />],
+    ["monitors", "Monitors", <MonitorIcon />],
+    ["accessories", "Accessories", <MouseIcon />],
+    ["smart-home", "Smart Home", <HomeIcon />],
+  ];
 
   return (
     <div className="categories">
 
-      {categories.map((category) => (
+      {categories.map(([value, label, icon], index) => (
 
         <button
-          key={category}
+          key={value}
+          className={`category-card ${
+            index === 0 ? "active" : ""
+          }`}
           onClick={() =>
             navigate(
-              `/search?q=${encodeURIComponent(category)}`
+              `/search?q=${encodeURIComponent(label)}`
             )
           }
         >
-          {category}
+
+          <span className="category-icon">
+            {icon}
+          </span>
+
+          <span className="category-label">
+            {label}
+          </span>
+
         </button>
 
       ))}
 
     </div>
-  )
+  );
 }
 
 
-const products = [
-  {
-    id: 1,
-    name: "iPhone 15",
-    price: "₹48,000",
-    condition: "Excellent",
-    location: "Vellore"
-  },
-  {
-    id: 2,
-    name: "RTX 3060 Gaming PC",
-    price: "₹52,000",
-    condition: "Good",
-    location: "Vellore"
-  },
-  {
-    id: 3,
-    name: "Sony WH-1000XM5",
-    price: "₹18,000",
-    condition: "Like New",
-    location: "Katpadi"
-  },
-  {
-    id: 4,
-    name: "PS5 Slim",
-    price: "₹38,000",
-    condition: "Excellent",
-    location: "Vellore"
-  }
-]
-
+/* =========================================================
+   PRODUCT CARD
+   ========================================================= */
 
 function ProductCard({ product }) {
 
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const name =
-    product.productName || product.name
+    product.productName ||
+    product.name ||
+    "Electronics";
 
   const price =
     typeof product.price === "number"
       ? `₹${product.price.toLocaleString("en-IN")}`
-      : product.price
-
-  const sellerCondition =
-    product.condition === "like-new"
-      ? "Like New"
-      : product.condition === "good"
-        ? "Good"
-        : product.condition === "fair"
-          ? "Fair"
-          : product.condition === "parts"
-            ? "For Parts"
-            : product.condition
-
-  const aiCondition =
-    product.verification?.detectedCondition
-
-  const aiConditionLabel =
-    aiCondition === "like-new"
-      ? "Like New"
-      : aiCondition === "good"
-        ? "Good"
-        : aiCondition === "fair"
-          ? "Fair"
-          : aiCondition === "parts"
-            ? "For Parts"
-            : aiCondition
-
-  const confidence =
-    product.verification?.conditionConfidence
-
-  const confidencePercent =
-    typeof confidence === "number"
-      ? Math.round(confidence * 100)
-      : null
+      : product.price || "₹0";
 
   const image =
     product.images?.length > 0
       ? typeof product.images[0] === "string"
         ? product.images[0]
-        : product.images[0].data
-      : null
+        : product.images[0]?.data
+      : null;
 
-  const isVerified =
-    product.verification?.status === "verified"
+  const condition =
+    product.condition === "like-new"
+      ? "Like New"
+      : product.condition === "good"
+        ? "Good Condition"
+        : product.condition === "fair"
+          ? "Fair"
+          : product.condition === "parts"
+            ? "For Parts"
+            : product.condition || "Used";
+
+  const verified =
+    product.verification?.status === "verified";
 
   return (
-    <div
-      className="product-card"
+    <article
+      className="market-product-card"
       onClick={() =>
         navigate(`/product/${product.id}`)
       }
     >
 
-      {/* IMAGE */}
-
-      <div className="product-image-container">
+      <div className="market-product-image">
 
         {image ? (
           <img
             src={image}
             alt={name}
-            className="product-image"
           />
         ) : (
-          <div className="product-image-placeholder">
-            <span>📦</span>
+          <div className="image-placeholder">
+            <span>TECH</span>
           </div>
         )}
 
-        {isVerified && (
-          <div className="ai-verified-badge">
-            <span>✓</span>
-            AI VERIFIED
-          </div>
+        <button
+          className="product-heart"
+          onClick={(event) => {
+            event.stopPropagation();
+          }}
+        >
+          <HeartIcon size={19} />
+        </button>
+
+        <span className="condition-badge">
+          {condition}
+        </span>
+
+        {verified && (
+          <span className="verified-badge">
+            ✓ AI VERIFIED
+          </span>
         )}
 
       </div>
 
 
-      {/* PRODUCT INFO */}
+      <div className="market-product-info">
 
-      <div className="product-card-content">
+        <h3>{name}</h3>
 
-        <div className="product-location">
-          📍 {product.location || "Vellore"}
-        </div>
-
-        <h3 className="product-name">
-          {name}
-        </h3>
-
-        <div className="product-price">
+        <div className="market-product-price">
           {price}
         </div>
 
-
-        {/* SELLER CONDITION */}
-
-        <div className="seller-condition">
-
-          <span className="condition-label">
-            Seller condition
+        <div className="market-product-meta">
+          <span>
+            <PinIcon size={12} />
+            {product.location || "Vellore"}
           </span>
 
-          <span className="condition-value">
-            {sellerCondition}
-          </span>
+          <span>•</span>
 
+          <span>
+            {product.timeAgo || "Recently"}
+          </span>
         </div>
-
-
-        {/* AI CONDITION */}
-
-        {isVerified && aiConditionLabel && (
-
-          <div className="ai-condition-box">
-
-            <div className="ai-condition-header">
-
-              <span className="ai-spark">
-                ✦
-              </span>
-
-              <span>
-                AI CONDITION
-              </span>
-
-            </div>
-
-            <div className="ai-condition-main">
-
-              <strong>
-                {aiConditionLabel}
-              </strong>
-
-              {confidencePercent !== null && (
-                <span className="ai-confidence">
-                  {confidencePercent}%
-                </span>
-              )}
-
-            </div>
-
-            {confidencePercent !== null && (
-
-              <div className="confidence-bar">
-
-                <div
-                  className="confidence-fill"
-                  style={{
-                    width: `${confidencePercent}%`
-                  }}
-                />
-
-              </div>
-
-            )}
-
-          </div>
-
-        )}
 
       </div>
 
-    </div>
-  )
+    </article>
+  );
 }
+
+
+/* =========================================================
+   PRODUCTS
+   ========================================================= */
+
+const defaultProducts = [
+  {
+    id: "demo-1",
+    name: "MacBook Air M1",
+    price: "₹52,000",
+    condition: "good",
+    location: "Vellore",
+  },
+  {
+    id: "demo-2",
+    name: "iPhone 13 (128GB)",
+    price: "₹28,000",
+    condition: "like-new",
+    location: "Vellore",
+  },
+  {
+    id: "demo-3",
+    name: "NVIDIA RTX 3060 (12GB)",
+    price: "₹20,000",
+    condition: "good",
+    location: "Vellore",
+  },
+  {
+    id: "demo-4",
+    name: "Sony WH-1000XM4",
+    price: "₹12,500",
+    condition: "good",
+    location: "Vellore",
+  },
+  {
+    id: "demo-5",
+    name: 'LG 27" 144Hz Monitor',
+    price: "₹18,000",
+    condition: "like-new",
+    location: "Vellore",
+  },
+  {
+    id: "demo-6",
+    name: "PlayStation 5 (Disc)",
+    price: "₹32,000",
+    condition: "good",
+    location: "Vellore",
+  },
+];
+
 
 function ProductSection() {
 
   const [publishedListings, setPublishedListings] =
-    useState([])
+    useState([]);
 
   useEffect(() => {
 
     function loadListings() {
       setPublishedListings(
         getPublishedListings()
-      )
+      );
     }
 
-    loadListings()
+    loadListings();
 
     window.addEventListener(
       "listings-updated",
       loadListings
-    )
+    );
 
     return () => {
       window.removeEventListener(
         "listings-updated",
         loadListings
-      )
-    }
+      );
+    };
 
-  }, [])
+  }, []);
+
 
   const allProducts = [
     ...publishedListings,
-    ...products
-  ]
+    ...defaultProducts,
+  ];
+
 
   return (
-    <section className="product-section">
+    <section className="products-section">
 
-      <h2>
-        Fresh Tech Near You
-      </h2>
+      <div className="section-heading">
+
+        <div>
+          <div className="section-title">
+            <span className="section-marker">—</span>
+            <h2>Fresh Tech Near You</h2>
+          </div>
+
+          <p>
+            AI-matched listings from people in Vellore
+          </p>
+        </div>
+
+        <button
+          className="see-all"
+          onClick={() => navigateToSearch()}
+        >
+          See all
+          <ArrowIcon size={16} />
+        </button>
+
+      </div>
+
 
       <div className="product-grid">
 
-        {allProducts.map((product) => (
-
-          <ProductCard
-            key={product.id}
-            product={product}
-          />
-
-        ))}
+        {allProducts
+          .slice(0, 6)
+          .map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+            />
+          ))}
 
       </div>
 
     </section>
-  )
+  );
 }
 
+
+function navigateToSearch() {
+  window.location.href = "/search";
+}
+
+
+/* =========================================================
+   SELL CTA
+   ========================================================= */
+
+function SellCTA() {
+
+  const navigate = useNavigate();
+
+  return (
+    <section className="sell-cta">
+
+      <div className="sell-cta-main">
+
+        <div>
+          <h2>
+            Turn your unused tech
+            <br />
+            into someone's next upgrade.
+          </h2>
+        </div>
+
+        <button
+          className="cta-sell-button"
+          onClick={() => navigate("/sell")}
+        >
+          List Your Item
+          <ArrowIcon size={17} />
+        </button>
+
+      </div>
+
+
+      <div className="cta-features">
+
+        <div className="cta-feature">
+          <div className="cta-feature-icon">◷</div>
+
+          <div>
+            <strong>Easy Listing</strong>
+            <small>Post in minutes</small>
+          </div>
+        </div>
+
+
+        <div className="cta-feature">
+          <div className="cta-feature-icon">♢</div>
+
+          <div>
+            <strong>Safe & Local</strong>
+            <small>Chat, verify, meet</small>
+          </div>
+        </div>
+
+
+        <div className="cta-feature">
+          <div className="cta-feature-icon">✦</div>
+
+          <div>
+            <strong>AI Powered</strong>
+            <small>Smarter matches</small>
+          </div>
+        </div>
+
+
+        <div className="cta-feature">
+          <div className="cta-feature-icon">⌁</div>
+
+          <div>
+            <strong>Greener Future</strong>
+            <small>Give tech a longer life</small>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+  );
+}
+
+
+/* =========================================================
+   HERO
+   ========================================================= */
 
 function Hero() {
 
   return (
-    <div className="hero">
+    <section
+  className="hero"
+  style={{
+    backgroundImage: `url(${techHero})`,
+  }}
+>
 
-      <div className="hero-tag">
-        BUY • SELL • UPGRADE
+      <div className="hero-glow" />
+
+      <div className="hero-content">
+
+        <div className="hero-tag">
+          BUY&nbsp; • &nbsp;SELL&nbsp; • &nbsp;UPGRADE
+        </div>
+
+
+        <h1>
+          Great Tech
+          <br />
+          Finds{" "}
+          <span className="gradient-text">
+            a New Home
+          </span>
+        </h1>
+
+
+        <p className="hero-description">
+          <strong>
+            What are you InTheMarket for?
+          </strong>
+
+          <br />
+
+          Our AI finds the closest matching
+          pre-owned electronics near you.
+        </p>
+
+
+        <SearchBar />
+
+        <Suggestions />
+
       </div>
 
-      <h1>
-        Great Tech
-        <br />
-        Finds a New Home
-      </h1>
-
-      <p>
-        Describe what you are looking for
-        and we will find it for you.
-      </p>
-
-      <SearchBar />
-
-      <Suggestions />
 
       <Categories />
 
-    </div>
-  )
+    </section>
+  );
 }
 
+
+/* =========================================================
+   HOME
+   ========================================================= */
 
 function Home() {
 
   return (
-    <div>
+    <div className="marketplace-home">
 
       <Navbar />
 
@@ -497,10 +817,16 @@ function Home() {
 
       <ProductSection />
 
+      <SellCTA />
+
     </div>
-  )
+  );
 }
 
+
+/* =========================================================
+   APP / ROUTES
+   ========================================================= */
 
 function App() {
 
@@ -547,8 +873,8 @@ function App() {
       </Routes>
 
     </BrowserRouter>
-  )
+  );
 }
 
 
-export default App
+export default App;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useSearchParams, useNavigate } from "react-router-dom"
 
-import { publishListing } from "../data/listings"
+import { supabase } from "../lib/supabase"
 
 const VERIFICATION_SERVICE_URL = "http://localhost:5001"
 
@@ -41,7 +41,6 @@ function openImageDatabase() {
   })
 }
 
-
 async function getImagesFromDatabase(listingId) {
   const db = await openImageDatabase()
 
@@ -71,7 +70,6 @@ async function getImagesFromDatabase(listingId) {
   })
 }
 
-
 /* =========================================
    NAVBAR
    ========================================= */
@@ -89,15 +87,21 @@ function Navbar() {
       <ul className="nav-links">
 
         <li>
-          <a href="/">Browse</a>
+          <a href="/">
+            Browse
+          </a>
         </li>
 
         <li>
-          <a href="/sell">Sell</a>
+          <a href="/sell">
+            Sell
+          </a>
         </li>
 
         <li>
-          <a href="/messages">Messages</a>
+          <a href="/messages">
+            Messages
+          </a>
         </li>
 
         <li>
@@ -117,7 +121,6 @@ function Navbar() {
     </nav>
   )
 }
-
 
 /* =========================================
    VERIFICATION STATUS
@@ -174,9 +177,10 @@ function VerificationStatus() {
 
       try {
 
-        /*
-         * Get CameraVision result
-         */
+        /* =========================================
+           GET CAMERAVISION RESULT
+           ========================================= */
+
         const verificationResponse =
           await fetch(
             `${VERIFICATION_SERVICE_URL}/api/verification/${encodeURIComponent(
@@ -197,13 +201,13 @@ function VerificationStatus() {
             verificationData.error ||
             "Could not retrieve verification result."
           )
-
         }
 
 
-        /*
-         * Get original listing
-         */
+        /* =========================================
+           GET ORIGINAL LISTING
+           ========================================= */
+
         const listingResponse =
           await fetch(
             `${VERIFICATION_SERVICE_URL}/api/listings/${encodeURIComponent(
@@ -224,7 +228,6 @@ function VerificationStatus() {
             listingData.error ||
             "Could not retrieve listing."
           )
-
         }
 
 
@@ -246,19 +249,20 @@ function VerificationStatus() {
           "verified"
         ) {
 
-          /*
-           * Get location
-           */
+          /* =========================================
+             GET LOCATION
+             ========================================= */
+
           const location =
             sessionStorage.getItem(
               `pending-location-${listingId}`
             ) || "Vellore"
 
 
-          /*
-           * Get actual product images
-           * from IndexedDB
-           */
+          /* =========================================
+             GET PRODUCT IMAGES
+             ========================================= */
+
           let productImages = []
 
 
@@ -270,11 +274,6 @@ function VerificationStatus() {
               )
 
 
-            /*
-             * Convert File objects into
-             * data URLs so they can be stored
-             * with the listing.
-             */
             productImages =
               await Promise.all(
 
@@ -303,6 +302,7 @@ function VerificationStatus() {
 
                           }
 
+
                         reader.onerror =
                           () => {
 
@@ -313,6 +313,7 @@ function VerificationStatus() {
                             )
 
                           }
+
 
                         reader.readAsDataURL(
                           file
@@ -336,21 +337,20 @@ function VerificationStatus() {
           }
 
 
-          /*
-           * AI analysis
-           */
+          /* =========================================
+             AI ANALYSIS
+             ========================================= */
+
           const analysis =
             verificationData
               .vision_analysis || {}
 
 
-          /*
-           * Create final marketplace listing
-           */
-          const publishedListing = {
+          /* =========================================
+             BUILD MARKETPLACE LISTING
+             ========================================= */
 
-            id:
-              listingId,
+          const publishedListing = {
 
             productType:
               listingData.productType,
@@ -369,9 +369,6 @@ function VerificationStatus() {
             description:
               listingData.description,
 
-            /*
-             * ACTUAL SELLER PHOTOS
-             */
             images:
               productImages,
 
@@ -382,41 +379,31 @@ function VerificationStatus() {
               listingData.createdAt ||
               Date.now(),
 
-            /*
-             * AI VERIFICATION
-             */
             verification: {
 
               listingId:
-
                 listingId,
 
               status:
-
                 verificationData.status,
 
               conditionConfidence:
-
                 analysis.condition_confidence ??
                 null,
 
               detectedCondition:
-
                 analysis.condition ||
                 null,
 
               productDetected:
-
                 analysis.product_name ||
                 null,
 
               categoryDetected:
-
                 analysis.product_type ||
                 null,
 
               provider:
-
                 analysis.provider ||
                 null,
 
@@ -425,22 +412,121 @@ function VerificationStatus() {
           }
 
 
-          /*
-           * Save listing
-           */
-          publishListing(
-            publishedListing
+          /* =========================================
+             CHECK SELLER ID
+             ========================================= */
+
+          const sellerId =
+            import.meta.env.VITE_TEST_SELLER_ID
+
+
+          if (!sellerId) {
+
+            throw new Error(
+              "VITE_TEST_SELLER_ID is missing from frontend/.env"
+            )
+
+          }
+
+
+          /* =========================================
+             SAVE TO SUPABASE
+             ========================================= */
+
+          const supabaseListing = {
+
+            seller_id:
+              sellerId,
+
+            title:
+              publishedListing.productName,
+
+            description:
+              publishedListing.description,
+
+            category:
+              publishedListing.productType,
+
+            condition:
+              publishedListing.condition,
+
+            price:
+              publishedListing.price,
+
+            status:
+              "active",
+
+            created_at:
+              new Date(
+                publishedListing.createdAt
+              ).toISOString(),
+
+            /*
+             * Pictures will be connected to
+             * Supabase Storage later.
+             */
+            image_url:
+              null,
+
+          }
+
+
+          console.log(
+            "Saving listing to Supabase:",
+            supabaseListing
           )
 
+
+          const {
+            data: savedListing,
+            error: supabaseError,
+          } = await supabase
+
+            .from("InTheMarket")
+
+            .insert(
+              supabaseListing
+            )
+
+            .select()
+
+            .single()
+
+
+          if (supabaseError) {
+
+            console.error(
+              "Supabase insert error:",
+              supabaseError
+            )
+
+            throw new Error(
+              supabaseError.message ||
+              "Could not save listing to Supabase."
+            )
+
+          }
+
+
+          console.log(
+            "Listing saved successfully:",
+            savedListing
+          )
+
+
+          /* =========================================
+             SUCCESS
+             ========================================= */
 
           setPublished(
             true
           )
 
 
-          /*
-           * Clean temporary storage
-           */
+          /* =========================================
+             CLEAN TEMPORARY LOCATION
+             ========================================= */
+
           sessionStorage.removeItem(
             `pending-location-${listingId}`
           )
@@ -478,6 +564,7 @@ function VerificationStatus() {
 
     return (
       <>
+
         <Navbar />
 
         <main className="verification-result-page">
@@ -502,6 +589,7 @@ function VerificationStatus() {
           </div>
 
         </main>
+
       </>
     )
 
@@ -519,6 +607,7 @@ function VerificationStatus() {
 
     return (
       <>
+
         <Navbar />
 
         <main className="verification-result-page">
@@ -555,6 +644,7 @@ function VerificationStatus() {
           </div>
 
         </main>
+
       </>
     )
 
@@ -595,6 +685,7 @@ function VerificationStatus() {
 
   return (
     <>
+
       <Navbar />
 
       <main className="verification-result-page">
@@ -606,7 +697,6 @@ function VerificationStatus() {
           </div>
 
           <h1>
-
             Verification
             <br />
 
@@ -630,7 +720,9 @@ function VerificationStatus() {
         <div className="verification-result-card">
 
 
-          {/* PUBLISHED */}
+          {/* =========================================
+             PUBLISHED
+             ========================================= */}
 
           {published && (
 
@@ -664,7 +756,9 @@ function VerificationStatus() {
           )}
 
 
-          {/* STATUS */}
+          {/* =========================================
+             STATUS
+             ========================================= */}
 
           {!published && (
 
@@ -714,7 +808,9 @@ function VerificationStatus() {
           )}
 
 
-          {/* CONFIDENCE */}
+          {/* =========================================
+             CONFIDENCE
+             ========================================= */}
 
           <div
             className=
@@ -746,7 +842,9 @@ function VerificationStatus() {
           </div>
 
 
-          {/* ANALYSIS */}
+          {/* =========================================
+             ANALYSIS
+             ========================================= */}
 
           <div className="analysis-grid">
 
@@ -799,11 +897,13 @@ function VerificationStatus() {
               </span>
 
               <strong>
+
                 {CONDITION_LABELS[
                   analysis.condition
                 ] ||
                   analysis.condition ||
                   "—"}
+
               </strong>
 
             </div>
@@ -811,7 +911,9 @@ function VerificationStatus() {
           </div>
 
 
-          {/* AI NOTES */}
+          {/* =========================================
+             AI NOTES
+             ========================================= */}
 
           {analysis.condition_notes && (
 
@@ -830,7 +932,9 @@ function VerificationStatus() {
           )}
 
 
-          {/* DEFECTS */}
+          {/* =========================================
+             DEFECTS
+             ========================================= */}
 
           {analysis.detected_defects?.length >
             0 && (
@@ -860,7 +964,9 @@ function VerificationStatus() {
           )}
 
 
-          {/* CAMERAVISION FRAMES */}
+          {/* =========================================
+             CAMERAVISION FRAMES
+             ========================================= */}
 
           {result.frames_analyzed?.length >
             0 && (
@@ -902,7 +1008,9 @@ function VerificationStatus() {
           )}
 
 
-          {/* SELLER PHOTOS */}
+          {/* =========================================
+             SELLER PHOTOS
+             ========================================= */}
 
           {published &&
             listing?.images?.length > 0 && (
@@ -968,7 +1076,9 @@ function VerificationStatus() {
           )}
 
 
-          {/* ACTIONS */}
+          {/* =========================================
+             ACTIONS
+             ========================================= */}
 
           <div
             className=
@@ -1041,6 +1151,7 @@ function VerificationStatus() {
         </div>
 
       </main>
+
     </>
   )
 }

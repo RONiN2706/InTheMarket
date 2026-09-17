@@ -1,25 +1,8 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
+import "./ProductDetails.css"
 
 const STORAGE_KEY = "inthemarket-listings"
-
-function Navbar() {
-  return (
-    <nav className="navbar">
-      <div className="logo">
-        <a href="/">IntheMarket</a>
-      </div>
-
-      <ul className="nav-links">
-        <li><a href="/">Browse</a></li>
-        <li><a href="/sell">Sell</a></li>
-        <li><a href="/messages">Messages</a></li>
-        <li><a href="/saved">❤️ Saved</a></li>
-        <li><a href="/profile">Profile</a></li>
-      </ul>
-    </nav>
-  )
-}
 
 const demoProducts = [
   {
@@ -28,7 +11,7 @@ const demoProducts = [
     price: "₹48,000",
     condition: "Excellent",
     location: "Vellore",
-    description: "Excellent condition iPhone 15."
+    description: "Excellent condition iPhone 15.",
   },
   {
     id: "2",
@@ -36,7 +19,7 @@ const demoProducts = [
     price: "₹52,000",
     condition: "Good",
     location: "Vellore",
-    description: "Gaming PC with RTX 3060."
+    description: "Gaming PC with RTX 3060.",
   },
   {
     id: "3",
@@ -44,7 +27,7 @@ const demoProducts = [
     price: "₹18,000",
     condition: "Like New",
     location: "Katpadi",
-    description: "Premium noise cancelling headphones."
+    description: "Premium noise cancelling headphones.",
   },
   {
     id: "4",
@@ -52,8 +35,8 @@ const demoProducts = [
     price: "₹38,000",
     condition: "Excellent",
     location: "Vellore",
-    description: "PS5 Slim in excellent condition."
-  }
+    description: "PS5 Slim in excellent condition.",
+  },
 ]
 
 function getPublishedListings() {
@@ -71,343 +54,532 @@ function getPublishedListings() {
   }
 }
 
-function ProductDetails() {
+function formatCondition(value) {
+  if (!value) return "Unknown"
 
+  const conditions = {
+    "like-new": "Like New",
+    good: "Good",
+    fair: "Fair",
+    parts: "For Parts / Not Working",
+    excellent: "Excellent",
+  }
+
+  return conditions[value] || value
+}
+
+function ProductDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
 
   const [product, setProduct] = useState(null)
+  const [selectedImage, setSelectedImage] = useState(0)
 
   useEffect(() => {
+    const listings = getPublishedListings()
 
-    const publishedListings =
-      getPublishedListings()
-
-    const publishedProduct =
-      publishedListings.find(
-        (item) => String(item.id) === String(id)
-      )
+    const publishedProduct = listings.find(
+      (item) => String(item.id) === String(id)
+    )
 
     if (publishedProduct) {
       setProduct(publishedProduct)
       return
     }
 
-    const demoProduct =
-      demoProducts.find(
-        (item) => String(item.id) === String(id)
-      )
+    const demoProduct = demoProducts.find(
+      (item) => String(item.id) === String(id)
+    )
 
     setProduct(demoProduct || null)
-
   }, [id])
 
   if (!product) {
-
     return (
-      <>
-        <Navbar />
+      <div className="pd-page">
+        <div className="pd-not-found">
+          <div className="pd-not-found-icon">⌕</div>
 
-        <main
-          style={{
-            minHeight: "70vh",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            textAlign: "center",
-          }}
-        >
-
-          <h1>
-            Product Not Found
-          </h1>
+          <h1>Product Not Found</h1>
 
           <p>
-            This product does not exist.
+            This listing may have been removed or no longer exists.
           </p>
 
           <button
+            className="pd-back-button"
             onClick={() => navigate("/")}
-            style={{
-              marginTop: "20px",
-              padding: "12px 20px",
-              cursor: "pointer",
-            }}
           >
             ← Back to Browse
           </button>
-
-        </main>
-      </>
+        </div>
+      </div>
     )
   }
 
   const name =
-    product.productName || product.name
+    product.productName ||
+    product.name ||
+    "Unknown Product"
 
   const price =
     typeof product.price === "number"
       ? `₹${product.price.toLocaleString("en-IN")}`
-      : product.price
+      : product.price || "Price unavailable"
 
-  const condition =
-    product.condition === "like-new"
-      ? "Like New"
-      : product.condition === "good"
-        ? "Good"
-        : product.condition === "fair"
-          ? "Fair"
-          : product.condition === "parts"
-            ? "For Parts / Not Working"
-            : product.condition
+  const condition = formatCondition(product.condition)
 
-  const images =
-    product.images || []
+  const location = product.location || "Vellore"
+
+  const images = Array.isArray(product.images)
+    ? product.images
+    : []
+
+  const verification = product.verification || {}
 
   const isVerified =
-    product.verification?.status === "verified"
+    verification.status === "verified"
+
+  const confidence =
+    verification.conditionConfidence
+
+  const confidencePercent =
+    confidence !== null &&
+    confidence !== undefined &&
+    !Number.isNaN(Number(confidence))
+      ? Math.round(Number(confidence) * 100)
+      : null
+
+  const aiCondition =
+    verification.detectedCondition ||
+    verification.detected_condition ||
+    verification.condition ||
+    product.condition
+
+  const aiRemark =
+    verification.conditionNotes ||
+    verification.condition_notes ||
+    "CameraVision analyzed the provided images and found no additional condition details."
+
+  const defects =
+    verification.detectedDefects ||
+    verification.detected_defects ||
+    []
+
+  const currentImage =
+    images[selectedImage]
+
+  const currentImageSrc =
+    typeof currentImage === "string"
+      ? currentImage
+      : currentImage?.data
+
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: name,
+          text: `Check out this ${name} on IntheMarket`,
+          url: window.location.href,
+        })
+      } else {
+        await navigator.clipboard.writeText(
+          window.location.href
+        )
+
+        alert("Link copied!")
+      }
+    } catch {
+      // User cancelled sharing.
+    }
+  }
 
   return (
-    <>
-      <Navbar />
+    <div className="pd-page">
 
-      <main
-        style={{
-          maxWidth: "1100px",
-          margin: "60px auto",
-          padding: "0 24px",
-        }}
+      {/* BACK BUTTON */}
+
+      <button
+        className="pd-back-button"
+        onClick={() => navigate(-1)}
       >
+        <span>←</span>
+        Back
+      </button>
 
-        <button
-          onClick={() => navigate(-1)}
-          style={{
-            marginBottom: "30px",
-            cursor: "pointer",
-          }}
-        >
-          ← Back
-        </button>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.2fr 1fr",
-            gap: "40px",
-          }}
-        >
+      {/* MAIN PRODUCT LAYOUT */}
 
-          {/* PHOTOS */}
+      <div className="pd-layout">
 
-          <div>
+        {/* ==================================================
+            LEFT — PRODUCT IMAGE
+        ================================================== */}
 
-            {images.length > 0 ? (
+        <div className="pd-gallery">
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    images.length === 1
-                      ? "1fr"
-                      : "repeat(2, 1fr)",
-                  gap: "14px",
-                }}
-              >
+          <div className="pd-main-image">
 
-                {images.map((image, index) => (
-
-                  <img
-                    key={index}
-                    src={
-                      typeof image === "string"
-                        ? image
-                        : image.data
-                    }
-                    alt={`${name} ${index + 1}`}
-                    style={{
-                      width: "100%",
-                      height: "280px",
-                      objectFit: "cover",
-                      borderRadius: "16px",
-                      display: "block",
-                    }}
-                  />
-
-                ))}
-
-              </div>
-
+            {currentImageSrc ? (
+              <img
+                src={currentImageSrc}
+                alt={name}
+              />
             ) : (
-
-              <div
-                style={{
-                  height: "450px",
-                  borderRadius: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background:
-                    "rgba(255,255,255,0.04)",
-                  border:
-                    "1px solid rgba(255,255,255,0.08)",
-                  fontSize: "60px",
-                }}
-              >
-                📦
+              <div className="pd-image-placeholder">
+                <span>📦</span>
+                <p>No image available</p>
               </div>
+            )}
 
+            {isVerified && (
+              <div className="pd-image-badge">
+                <span className="pd-check">
+                  ✓
+                </span>
+
+                AI VERIFIED
+              </div>
             )}
 
           </div>
 
 
-          {/* PRODUCT INFO */}
+          {/* IMAGE THUMBNAILS */}
 
-          <div>
+          {images.length > 1 && (
+            <div className="pd-thumbnails">
 
-            {isVerified && (
+              {images.map((image, index) => {
 
-              <div
-                style={{
-                  display: "inline-block",
-                  padding: "8px 12px",
-                  borderRadius: "20px",
-                  marginBottom: "18px",
-                  background:
-                    "rgba(120, 70, 255, 0.15)",
-                  border:
-                    "1px solid rgba(140, 90, 255, 0.4)",
-                  color: "#b99cff",
-                  fontSize: "13px",
-                  fontWeight: "600",
-                }}
-              >
-                ✓ AI VERIFIED
-              </div>
+                const src =
+                  typeof image === "string"
+                    ? image
+                    : image?.data
 
-            )}
+                return (
+                  <button
+                    key={index}
+                    className={
+                      selectedImage === index
+                        ? "pd-thumbnail pd-thumbnail-active"
+                        : "pd-thumbnail"
+                    }
+                    onClick={() =>
+                      setSelectedImage(index)
+                    }
+                  >
+                    <img
+                      src={src}
+                      alt={`${name} ${index + 1}`}
+                    />
+                  </button>
+                )
+              })}
 
-            <h1>
+            </div>
+          )}
+
+        </div>
+
+
+        {/* ==================================================
+            RIGHT — PRODUCT INFORMATION
+        ================================================== */}
+
+        <div className="pd-info">
+
+          {/* CATEGORY */}
+
+          <div className="pd-category">
+            {product.category ||
+              product.productType ||
+              "ELECTRONICS"}
+          </div>
+
+
+          {/* TITLE + ACTIONS */}
+
+          <div className="pd-title-row">
+
+            <h1 className="pd-title">
               {name}
             </h1>
 
-            <div
-              style={{
-                fontSize: "32px",
-                fontWeight: "700",
-                margin: "20px 0",
-              }}
-            >
-              {price}
-            </div>
+            <div className="pd-actions">
 
-            <div
-              style={{
-                display: "flex",
-                gap: "10px",
-                flexWrap: "wrap",
-                marginBottom: "25px",
-              }}
-            >
-
-              <span>
-                {condition}
-              </span>
-
-              <span>
-                📍 {product.location || "Vellore"}
-              </span>
-
-            </div>
-
-
-            {/* VERIFICATION */}
-
-            {isVerified && (
-
-              <div
-                style={{
-                  padding: "18px",
-                  marginBottom: "25px",
-                  borderRadius: "14px",
-                  background:
-                    "rgba(100, 255, 170, 0.06)",
-                  border:
-                    "1px solid rgba(100, 255, 170, 0.2)",
-                }}
+              <button
+                className="pd-small-button"
+                onClick={() =>
+                  console.log(
+                    "Save listing:",
+                    product.id
+                  )
+                }
               >
+                ♡ Save
+              </button>
 
-                <strong>
-                  🛡️ CameraVision Verified
-                </strong>
+              <button
+                className="pd-small-button"
+                onClick={handleShare}
+              >
+                ↗ Share
+              </button>
 
-                <p>
-                  This listing has passed AI-powered
-                  device verification.
-                </p>
+            </div>
 
-                {product.verification
-                  ?.conditionConfidence !== null &&
-                  product.verification
-                    ?.conditionConfidence !== undefined && (
+          </div>
 
-                    <p>
-                      Condition confidence:{" "}
-                      {Math.round(
-                        product.verification
-                          .conditionConfidence * 100
-                      )}
-                      %
-                    </p>
 
-                  )}
+          {/* PRICE */}
+
+          <div className="pd-price">
+            {price}
+          </div>
+
+
+          {/* CONDITION + LOCATION */}
+
+          <div className="pd-meta">
+
+            <span className="pd-condition">
+              {condition}
+            </span>
+
+            <span className="pd-separator">
+              •
+            </span>
+
+            <span className="pd-location">
+              📍 {location}
+            </span>
+
+          </div>
+
+
+          {/* ==================================================
+              CAMERAVISION VERIFICATION
+          ================================================== */}
+
+          {isVerified && (
+            <section className="pd-verification">
+
+              {/* HEADER */}
+
+              <div className="pd-verification-header">
+
+                <div className="pd-camera-brand">
+
+                  <div className="pd-camera-icon">
+                    ✦
+                  </div>
+
+                  <div>
+
+                    <div className="pd-camera-title">
+                      CameraVision
+                    </div>
+
+                    <div className="pd-camera-subtitle">
+                      AI device verification
+                    </div>
+
+                  </div>
+
+                </div>
+
+                <span className="pd-verified-pill">
+                  VERIFIED
+                </span>
 
               </div>
 
-            )}
+
+              {/* VERIFICATION CHECKS */}
+
+              <div className="pd-check-grid">
+
+                <div className="pd-check-card">
+                  <span>✓</span>
+                  Device matched
+                </div>
+
+                <div className="pd-check-card">
+                  <span>✓</span>
+                  Visual scan passed
+                </div>
+
+              </div>
 
 
-            {/* DESCRIPTION */}
+              {/* CONFIDENCE */}
 
-            <h3>
-              Description
-            </h3>
+              {confidencePercent !== null && (
+                <div className="pd-confidence">
 
-            <p
-              style={{
-                lineHeight: "1.7",
-                opacity: 0.8,
-              }}
-            >
+                  <div className="pd-confidence-top">
+
+                    <span>
+                      Condition confidence
+                    </span>
+
+                    <strong>
+                      {confidencePercent}%
+                    </strong>
+
+                  </div>
+
+                  <div className="pd-confidence-track">
+
+                    <div
+                      className="pd-confidence-fill"
+                      style={{
+                        width: `${confidencePercent}%`,
+                      }}
+                    />
+
+                  </div>
+
+                </div>
+              )}
+
+
+              {/* ==================================================
+                  AI CONDITION + AI REMARK
+              ================================================== */}
+
+              <div className="pd-ai-inspection">
+
+                <div className="pd-ai-section">
+
+                  <div className="pd-label">
+                    AI DETECTED CONDITION
+                  </div>
+
+                  <div className="pd-ai-condition">
+                    {formatCondition(aiCondition)}
+                  </div>
+
+                </div>
+
+
+                <div className="pd-vertical-line" />
+
+
+                <div className="pd-ai-section">
+
+                  <div className="pd-label">
+                    AI REMARK
+                  </div>
+
+                  <p className="pd-remark">
+                    {aiRemark}
+                  </p>
+
+                </div>
+
+              </div>
+
+
+              {/* ==================================================
+                  DETECTED DEFECTS
+              ================================================== */}
+
+              <div className="pd-defects">
+
+                <div className="pd-label">
+                  DETECTED DEFECTS
+                </div>
+
+                {Array.isArray(defects) &&
+                defects.length > 0 ? (
+
+                  <div className="pd-defect-list">
+
+                    {defects.map(
+                      (defect, index) => (
+                        <div
+                          className="pd-defect"
+                          key={index}
+                        >
+                          <span>!</span>
+                          {defect}
+                        </div>
+                      )
+                    )}
+
+                  </div>
+
+                ) : (
+
+                  <div className="pd-no-defects">
+
+                    <span>✓</span>
+
+                    No visible defects detected
+
+                  </div>
+
+                )}
+
+              </div>
+
+            </section>
+          )}
+
+
+          {/* ==================================================
+              DESCRIPTION
+          ================================================== */}
+
+          <section className="pd-description">
+
+            <div className="pd-section-title">
+              DESCRIPTION
+            </div>
+
+            <p>
               {product.description ||
                 "No description provided."}
             </p>
 
+          </section>
 
-            {/* ACTION */}
 
-            <button
-              style={{
-                width: "100%",
-                marginTop: "30px",
-                padding: "16px",
-                borderRadius: "12px",
-                border: "none",
-                cursor: "pointer",
-                fontSize: "16px",
-                fontWeight: "600",
-              }}
-            >
-              Contact Seller
-            </button>
+          {/* CONTACT SELLER */}
 
-          </div>
+          <button
+            className="pd-contact-button"
+            onClick={() =>
+              console.log(
+                "Contact seller:",
+                product.id
+              )
+            }
+          >
+            Contact Seller
+          </button>
+
+
+          {/* FOOTER */}
+
+          {isVerified && (
+            <div className="pd-footer">
+
+              <span>✦</span>
+
+              Visually analyzed by
+              CameraVision AI
+
+            </div>
+          )}
 
         </div>
 
-      </main>
-    </>
+      </div>
+
+    </div>
   )
 }
 
