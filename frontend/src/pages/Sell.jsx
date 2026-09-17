@@ -1,6 +1,10 @@
-import { useState } from "react"
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {createListing} from "../api";
+import { createListing, uploadListingImage } from "../api";
 
 const VERIFICATION_SERVICE_URL = "http://localhost:5001"
+
 
 function Navbar() {
   return (
@@ -109,18 +113,70 @@ async function saveImagesToDatabase(
 
 function Sell() {
 
-  const [loading, setLoading] =
-    useState(false)
+  const [loading, setLoading] =useState(false)
 
-  const [error, setError] =
-    useState("")
-
+  const [error, setError] = useState("")
   const [images, setImages] =
     useState([])
 
   const [imagePreviews, setImagePreviews] =
     useState([])
+  
+  const navigate = useNavigate();
+  
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    category: "",
+    condition: "Used-Good",
+    price: "",
+  });
+  const [successMsg, setSuccessMsg] = useState("");
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccessMsg("");
+
+    const payload = {
+      seller_id: "eb41dc9d-1d0e-4a4e-8bcc-177d90cc26d0", // Replace with actual seller Id
+      title: formData.title,
+      description: formData.description,
+      category: formData.category,
+      condition: formData.condition,
+      price: Number(formData.price),
+      status: "active",
+    };
+
+    try {
+      await createListing(payload);
+
+      setSuccessMsg("Listing created successfully!");
+      setFormData({
+        title: "",
+        description: "",
+        category: "",
+        condition: "Used-Good",
+        price: "",
+      });
+
+      setTimeout(() => navigate("/"), 1500);
+    } catch (err) {
+      setError("Failed to create listing. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
 
   /* =========================================
      IMAGE SELECTION
@@ -191,7 +247,49 @@ function Sell() {
     const form =
       event.target
 
+      if (!images || images.length === 0) {
+      setError("Please upload at least one product photo.");
+      setLoading(false);
+      return;
+    }
 
+    try {
+      // 2. Build initial listing payload for FastAPI
+      const initialPayload = {
+        seller_id: "PASTE_VALID_USER_UUID_HERE", // Replace with actual seller UUID
+        title: formData.productName.trim(),
+        description: formData.description.trim(),
+        category: formData.productType,
+        condition: formData.condition,
+        price: Number(formData.price),
+        status: "active",
+        image_url: "", // Set placeholder until image is uploaded
+      };
+
+      // 3. Create initial listing record in backend database
+      const createdListing = await createListing(initialPayload);
+
+      // 4. Upload photo to Supabase Storage bucket
+      const photoUrl = await uploadListingImage(images, createdListing.id);
+
+      // 5. Update row in Supabase with the returned image_url
+      const { error: updateError } = await supabase
+        .from("listings")
+        .update({ image_url: photoUrl })
+        .eq("id", createdListing.id);
+
+      if (updateError) throw updateError;
+
+      // 6. Handle UI success state
+      setSuccessMsg("Listing created successfully!");
+      setLoading(false);
+    } catch (err) {
+      console.error("Listing creation failed:", err);
+      setError(err.message || "Failed to create listing.");
+      setLoading(false);
+    }
+  }
+  
     if (images.length === 0) {
 
       setError(

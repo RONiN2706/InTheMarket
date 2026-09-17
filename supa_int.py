@@ -21,7 +21,7 @@ app = FastAPI(title="InTheMarket Listing API", version="1.0.0")
 # Enable CORS for frontend integration (Ashbel)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust to specific origin in production (e.g., http://localhost:3000)
+    allow_origins=["*"],  # Adjust to specific origin in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
