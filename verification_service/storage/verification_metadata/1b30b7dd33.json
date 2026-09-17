@@ -1,0 +1,39 @@
+{
+  "listing_id": "1b30b7dd33",
+  "verified_at": "2026-09-16T12:09:14.717098+00:00",
+  "video": {
+    "filename": "1b30b7dd33.webm",
+    "frames_sampled": 1
+  },
+  "frames_analyzed": [
+    {
+      "file": "frame_00.jpg",
+      "timestamp_seconds": 0.0,
+      "sharpness": 356.6
+    }
+  ],
+  "claimed": {
+    "product_name": "Nothing Phone 4A",
+    "product_type": "Smartphones & Tablets",
+    "condition": "like-new"
+  },
+  "vision_analysis": {
+    "provider": "mock",
+    "product_name": "Nothing Phone 4A",
+    "product_type": "Smartphones & Tablets",
+    "condition": "like-new",
+    "condition_confidence": 0.75,
+    "condition_notes": "Mock analysis \u2014 no ANTHROPIC_API_KEY is configured, so this simply echoes the seller's claimed fields. Set the environment variable (and `pip install anthropic`) to run real image analysis.",
+    "detected_defects": [],
+    "mock": true
+  },
+  "comparison": {
+    "product_name_similarity": 1.0,
+    "product_type_match": true,
+    "condition_delta": 0,
+    "status": "verified",
+    "status_reason": "The scan is consistent with the listing details."
+  },
+  "status": "verified",
+  "status_reason": "The scan is consistent with the listing details."
+}
